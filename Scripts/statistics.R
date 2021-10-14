@@ -6,11 +6,11 @@
 ## Edited 14/10/2021 
 
 
-## Library ----
+### Library ----
 library(tidyverse)
 
 
-## Loading the data ----
+### Loading the data ----
 lichen <- read.csv("Data/raw_data.csv")
 
 str(lichen)
@@ -20,7 +20,7 @@ lichen <- lichen %>%
             mutate(tree_dia_cm = tree_circum_cm/pi)
 
 
-## Checking assumptions ----
+### Checking assumptions ----
 # normality of data distribution 
 hist(lichen$sp_richness)   # not normal
 hist(lichen$coverage_perc)   # not normal
@@ -72,9 +72,12 @@ plot(lm6)
 plot(lm7)
 plot(lm8)
 
+# removing row 13 (outlier)
+lichen_trans <- lichen_trans[-13, ]
 
-## Doing a 2-way ANOVA ----
-# species richness 
+
+### Doing a 2-way ANOVA ----
+## species richness 
 twoway <- aov(sp_rich_sqrt ~ type + location, data = lichen_trans)
 int <- aov(sp_rich_sqrt ~ type*location, data = lichen_trans)
 
@@ -84,10 +87,10 @@ summary(twoway)
 
 # making a model with diameter
 twoway_dia <- aov(sp_rich_sqrt ~ type + location + tree_dia_cm, data = lichen_trans)
-summary(twoway_dia)   # no significant effect of any variable
 
+AIC(twoway, twoway_dia)  # twoway still better 
 
-# coverage 
+## coverage 
 twoway_cov <- aov(coverage_sqrt ~ type + location, data = lichen_trans)
 int_cov <- aov(coverage_sqrt ~ type*location, data = lichen_trans)
 twoway_dia_cov <- aov(coverage_sqrt ~ type + location + tree_dia_cm, data = lichen_trans)
@@ -95,3 +98,11 @@ twoway_dia_cov <- aov(coverage_sqrt ~ type + location + tree_dia_cm, data = lich
 AIC(twoway_cov, int_cov, twoway_dia_cov)
 
 summary(twoway_cov)  # nothing is significant here either 
+
+
+### Calculating summarized data ----
+data_sum <- lichen %>% 
+              group_by(type, location) %>% 
+              summarize(avg_sp = mean(sp_richness),
+                        avg_cov = mean(coverage_perc))
+
