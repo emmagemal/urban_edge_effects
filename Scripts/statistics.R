@@ -3,11 +3,13 @@
 
 ## Stockholm University - Landscape Ecology master's program 2021-2023 
 ## Emma Gemal, emmagemal@outlook.com
-## Edited 14/10/2021 
+## Edited 17/10/2021 
 
 
 ### Library ----
 library(tidyverse)
+library(car)
+library(sjPlot)
 
 
 ### Loading the data ----
@@ -19,88 +21,98 @@ str(lichen)
 lichen <- lichen %>% 
             mutate(tree_dia_cm = tree_circum_cm/pi)
 
+# averaging across the 3 trees per plot 
+lichen_sum <- lichen %>% 
+                group_by(site_name, location) %>%        
+                summarize(avg_sp = mean(sp_richness),
+                          avg_cov = mean(coverage_perc),
+                          type = first(type),
+                          avg_dia = mean(tree_dia_cm)) 
 
 ### Checking assumptions ----
 # normality of data distribution 
-hist(lichen$sp_richness)   # not normal
-hist(lichen$coverage_perc)   # not normal
+hist(lichen_sum$avg_sp)   # not normal
+hist(lichen_sum$avg_cov)   # not normal
 
-shapiro.test(lichen$sp_richness)
-shapiro.test(lichen$coverage_perc)
+shapiro.test(lichen_sum$avg_sp)    # normal, less power with small sample sizes
+shapiro.test(lichen_sum$avg_cov)   # normal
 
 # homoscedasticity 
-plot(lm(sp_richness ~ type, data = lichen))
-plot(lm(sp_richness ~ location, data = lichen))
-plot(lm(coverage_perc ~ type, data = lichen))
-plot(lm(coverage_perc ~ location, data = lichen))
+plot(lm(avg_sp ~ type, data = lichen_sum))
+leveneTest(lichen_sum$avg_sp, lichen_sum$type)  # equal variances, 
+                                                # but test is vulnerable to small sample sizes
+
+plot(lm(avg_sp ~ location, data = lichen_sum))
+leveneTest(lichen_sum$avg_sp, lichen_sum$location)   # equal variances
+
+plot(lm(avg_cov ~ type, data = lichen_sum))
+leveneTest(lichen_sum$avg_cov, lichen_sum$type)   # equal variances
+
+plot(lm(avg_cov ~ location, data = lichen_sum))
+leveneTest(lichen_sum$avg_cov, lichen_sum$location)   # equal variances
 
 # normality of residuals 
-lm1 <- lm(sp_richness ~ type, data = lichen)
-lm2 <- lm(coverage_perc ~ type, data = lichen)
-shapiro.test(residuals(lm2))  # not normal
-shapiro.test(residuals(lm2))  # not normal 
-
-# transformation of the data to attempt to make it normal 
-lichen_trans <- lichen %>% 
-                    mutate(sp_rich_log = log(sp_richness)) %>% 
-                    mutate(coverage_log = log(coverage_perc)) %>% 
-                    mutate(sp_rich_sqrt = sqrt(sp_richness)) %>% 
-                    mutate(coverage_sqrt = sqrt(coverage_perc))
-
-hist(lichen_trans$sp_rich_log)
-hist(lichen_trans$coverage_log)
-hist(lichen_trans$sp_rich_sqrt)
-hist(lichen_trans$coverage_sqrt)
-
-lm3 <- lm(sp_rich_log ~ type, data = lichen_trans)
-lm4 <- lm(coverage_log ~ type, data = lichen_trans)
-lm5 <- lm(sp_rich_sqrt ~ type, data = lichen_trans)
-lm6 <- lm(coverage_sqrt ~ type, data = lichen_trans)
-
-lm7 <- lm(sp_rich_sqrt ~ location, data = lichen_trans)
-lm8 <- lm(coverage_sqrt ~ location, data = lichen_trans)
-
-shapiro.test(residuals(lm3))  # still not normal
-shapiro.test(residuals(lm4))  # still not normal
-shapiro.test(residuals(lm5))  
-shapiro.test(residuals(lm6))
-shapiro.test(residuals(lm7))  
-shapiro.test(residuals(lm8))
-
-plot(lm5)
-plot(lm6)
-plot(lm7)
-plot(lm8)
-
-# removing row 13 (outlier)
-lichen_trans <- lichen_trans[-13, ]
+lm1 <- lm(avg_sp ~ type, data = lichen_sum)
+lm2 <- lm(avg_cov ~ type, data = lichen_sum)
+shapiro.test(residuals(lm2))  # normal
+shapiro.test(residuals(lm2))  # normal 
 
 
 ### Doing a 2-way ANOVA ----
 ## species richness 
-twoway <- aov(sp_rich_sqrt ~ type + location, data = lichen_trans)
-int <- aov(sp_rich_sqrt ~ type*location, data = lichen_trans)
+twoway <- aov(avg_sp ~ type + location, data = lichen_sum)
+int <- aov(avg_sp ~ type*location, data = lichen_sum)
 
-AIC(twoway, int)  # interaction not best 
-
-summary(twoway)
+AIC(twoway, int)  # interaction is not best (twoway is best)
 
 # making a model with diameter
-twoway_dia <- aov(sp_rich_sqrt ~ type + location + tree_dia_cm, data = lichen_trans)
+twoway_dia <- aov(avg_sp ~ type + location + avg_dia, data = lichen_sum)
+int_dia <- aov(avg_sp ~ type*location*avg_dia, data = lichen_sum)
 
-AIC(twoway, twoway_dia)  # twoway still better 
+AIC(twoway, twoway_dia, int_dia)  # int is too complicated, twoway and twoway_dia the same
+                                  # twoway is simpler = maybe better?
+
+summary(twoway)
+summary(twoway_dia)  # this model explains slightly more of the variation
+# nothing is significant though
+
+# for model with tree diameter: 
+# matrix type vs richness: p = 0.350, DF = 1, F = 0.948
+# location in forest vs richness: p = 0.433, DF = 1, F = 0.658
+# diameter vs richness: p = 0.240, DF = 1, F = 1.530
+# residual variance: DF = 12, sum of squares = 12.664 (not sure if relevant)
+
 
 ## coverage 
-twoway_cov <- aov(coverage_sqrt ~ type + location, data = lichen_trans)
-int_cov <- aov(coverage_sqrt ~ type*location, data = lichen_trans)
-twoway_dia_cov <- aov(coverage_sqrt ~ type + location + tree_dia_cm, data = lichen_trans)
+twoway_cov <- aov(avg_cov ~ type + location, data = lichen_sum)
+int_cov <- aov(avg_cov ~ type*location, data = lichen_sum)
+twoway_dia_cov <- aov(avg_cov ~ type + location + avg_dia, data = lichen_sum)
+int_dia_cov <- aov(avg_cov ~ type*location*avg_dia, data = lichen_sum)
 
-AIC(twoway_cov, int_cov, twoway_dia_cov)
+AIC(twoway_cov, int_cov, twoway_dia_cov, int_dia_cov)   # interaction with all is best!
 
-summary(twoway_cov)  # nothing is significant here either 
+summary(int_dia_cov)  # nothing is significant here either 
+
+# plotting the predicted values to visualize the interaction 
+fit <- lm(avg_cov ~ type*location*avg_dia, data = lichen_sum)
+plot_model(fit, type = "pred", terms = c("type", "avg_dia", "location"))
 
 
-### Calculating summarized data ----
+# basic plot of coverage vs diameter in order to interpret interaction term 
+(cov_dia <- ggplot(lichen_sum, aes(x = avg_dia, y = avg_cov)) +
+              geom_point(aes(color = location)) +
+              geom_smooth(method = "lm") +
+              facet_wrap(~type, scales = "free"))
+
+(cov_dia <- ggplot(lichen_sum, aes(x = avg_dia, y = avg_cov)) +
+    geom_point(aes(color = type)) +
+    geom_smooth(method = "lm") +
+    facet_wrap(~location, scales = "free"))
+
+ggsave("Figures/coverage_diameter_plot.png", plot = cov_dia, width = 8, height = 4.5, units = "in")
+
+
+### Calculating summarized data for results ----
 data_sum <- lichen %>% 
               group_by(type, location) %>% 
               summarize(avg_sp = mean(sp_richness),

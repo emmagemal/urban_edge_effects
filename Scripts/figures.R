@@ -19,11 +19,17 @@ str(lichen)
 lichen <- lichen %>% 
             mutate(tree_dia_cm = tree_circum_cm/pi)
 
-
+# averaging across the 3 trees per plot 
+lichen_sum <- lichen %>% 
+                group_by(site_name, location) %>%        
+                summarize(avg_sp = mean(sp_richness),
+                          avg_cov = mean(coverage_perc),
+                          type = first(type),
+                          avg_dia = mean(tree_dia_cm)) 
 
 ## Making a boxplot ----
 # species richness
-(boxplot_sp <- ggplot(lichen, aes(x = location, y = sp_richness)) +
+(boxplot_sp <- ggplot(lichen_sum, aes(x = location, y = avg_sp)) +
                   geom_boxplot(aes(fill = location)) +
                   ylab("Species richness") +
                   xlab("Location in forest") +
@@ -42,7 +48,7 @@ ggsave("Figures/boxplot_species.png", plot = boxplot_sp, width = 6, height = 5.5
 
 
 # coverage 
-(boxplot_cov <- ggplot(lichen, aes(x = location, y = coverage_perc)) +
+(boxplot_cov <- ggplot(lichen_sum, aes(x = location, y = avg_cov)) +
                   geom_boxplot(aes(fill = location)) +
                   xlab("Location in forest") +
                   ylab("Lichen coverage (%)") +
