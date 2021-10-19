@@ -41,17 +41,17 @@ shapiro.test(lichen_sum$avg_dia)   # normal
 
 # homoscedasticity 
 plot(lm(avg_sp ~ type, data = lichen_sum))
-leveneTest(lichen_sum$avg_sp, lichen_sum$type)  # equal variances, 
+bartlett.test(lichen_sum$avg_sp, lichen_sum$type)  # equal variances, 
                                                 # but test is vulnerable to small sample sizes
 
 plot(lm(avg_sp ~ location, data = lichen_sum))
-leveneTest(lichen_sum$avg_sp, lichen_sum$location)   # equal variances
+bartlett.test(lichen_sum$avg_sp, lichen_sum$location)   # equal variances
 
 plot(lm(avg_cov ~ type, data = lichen_sum))
-leveneTest(lichen_sum$avg_cov, lichen_sum$type)   # equal variances
+bartlett.test(lichen_sum$avg_cov, lichen_sum$type)   # equal variances
 
 plot(lm(avg_cov ~ location, data = lichen_sum))
-leveneTest(lichen_sum$avg_cov, lichen_sum$location)   # equal variances
+bartlett.test(lichen_sum$avg_cov, lichen_sum$location)   # equal variances
 
 # normality of residuals 
 lm1 <- lm(avg_sp ~ type, data = lichen_sum)
@@ -80,10 +80,11 @@ AIC(twoway, int)  # interaction is not best (twoway is best)
 twoway_dia <- lm(avg_sp ~ type + location + avg_dia, data = lichen_sum)
 int_dia <- lm(avg_sp ~ type*location*avg_dia, data = lichen_sum)
 
-AIC(twoway, twoway_dia, int_dia)  # int is too complicated, twoway and twoway_dia the same
-                                  # twoway is simpler = maybe better?
+AIC(twoway, int, twoway_dia, int_dia)  # int is too complicated, twoway and twoway_dia the same
+                                       # twoway is simpler = maybe better?
 
 Anova(twoway, type = "III")
+summary(twoway)
 # matrix type vs richness: p = 0.3574, DF = 1, F = 0.9105
 # location in forest vs richness: p = 0.4408, DF = 1, F = 0.6323
 # residual variance: DF = 13, lots of within-group variance that's unexplained
@@ -98,6 +99,7 @@ int_dia_cov <- lm(avg_cov ~ type*location*avg_dia, data = lichen_sum)
 AIC(twoway_cov, int_cov, twoway_dia_cov, int_dia_cov)   # interaction with all is best!
 
 Anova(int_dia_cov, type = "III")  # nothing is significant here either 
+summary(int_dia_cov)
 # matrix type vs coverage: p = 0.97956, DF = 1, F = 0.0007
 # location vs coverage: p = 0.10021, DF = 1, F = 3.4530
 # diameter vs coverage: p = 0.04856 (***SIGNIFICANT***), DF = 1, F = 5.4046
@@ -109,8 +111,9 @@ Anova(int_dia_cov, type = "III")  # nothing is significant here either
 
 
 ### Calculating summarized data for results ----
-data_sum <- lichen_sum %>% 
+data_sum <- lichen %>% 
               group_by(type, location) %>% 
-              summarize(avg_sp = mean(avg_sp),
-                        avg_cov = mean(avg_cov))
-
+              summarize(avg_sp = mean(sp_richness),
+                        avg_cov = mean(coverage_perc),
+                        se_sp = (sd(sp_richness)/2),
+                        se_cov = (sd(coverage_perc)/2))
