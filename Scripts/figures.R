@@ -41,10 +41,10 @@ lichen_sum <- lichen %>%
                         axis.title.y = 
                           element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
                         legend.position = "none") +
-                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+                  theme(plot.margin = unit(c(0.3, 1, 0.3, 0.3), "cm")) +
                   scale_fill_manual(values = c("#DDD78D", "#5f8f2f")))
 
-ggsave("Figures/boxplot_species.png", plot = boxplot_sp, width = 6, height = 5.5, units = "in")
+ggsave("Figures/boxplot_species.png", plot = boxplot_sp, width = 5, height = 4.5, units = "in")
 
 
 # coverage 
@@ -60,10 +60,10 @@ ggsave("Figures/boxplot_species.png", plot = boxplot_sp, width = 6, height = 5.5
                         axis.title.y = 
                           element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
                         legend.position = "none") +
-                  theme(plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+                  theme(plot.margin = unit(c(0.3, 0.3, 0.3, 1), "cm")) +
                   scale_fill_manual(values = c("#DDD78D", "#5f8f2f")))
 
-ggsave("Figures/boxplot_coverage.png", plot = boxplot_cov, width = 6, height = 5.5, units = "in")
+ggsave("Figures/boxplot_coverage.png", plot = boxplot_cov, width = 5, height = 4.5, units = "in")
 
 
 # tree diameter ~ species richness (for presentation)
